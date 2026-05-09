@@ -10,6 +10,7 @@
 - 验证与评估
 - 模型保存与加载
 - 单条文本预测
+- 兼容 `mudou_spam` Tab 分隔短信数据集
 
 ## 1. 项目结构
 
@@ -46,6 +47,10 @@ pip install -r requirements.txt
 
 ## 3. 数据格式
 
+本项目现在支持两种数据格式：
+
+### 3.1 CSV 格式
+
 请在 `data/` 目录下准备一个 CSV 文件，例如：`data/sms_spam.csv`
 
 要求至少包含以下两列：
@@ -65,19 +70,47 @@ text,label
 
 > 如果你的标签是中文（如“垃圾”“正常”）或英文（如 `spam` / `ham`），程序会自动尝试映射。
 
+### 3.2 `mudou_spam` 格式（推荐）
+
+项目已兼容 `mudou_spam` 这类 **Tab 分隔的 `.txt` 数据文件**。每一行包含 3 个字段：
+
+1. `label`：标签，`0` 表示正常短信（Ham），`1` 表示垃圾短信（Spam）
+2. `text`：原始短信内容
+3. `segmented_text`：已分词结果
+
+字段之间使用 `\t` 分隔，例如：
+
+```text
+1	免费领取100元话费，点击链接马上办理	免费 领取 100 元 话费 ， 点击 链接 马上 办理
+0	您好，明天上午十点开会，请准时参加	您好 ， 明天 上午 十点 开会 ， 请 准时 参加
+```
+
+程序行为说明：
+
+- 第 1 列会作为训练标签读取。
+- 第 2 列会作为原始短信文本读取。
+- 第 3 列如果存在，会优先直接作为分词结果使用，以节省 `jieba` 重新分词的时间。
+- 如果第 3 列为空，程序会自动退回到对第 2 列使用 `jieba` 分词。
+
 ## 4. 训练模型
 
-默认命令：
+### 4.1 使用 CSV
 
 ```bash
 python train.py --data_path data/sms_spam.csv
+```
+
+### 4.2 使用 `mudou_spam`
+
+```bash
+python train.py --data_path data/mudou_spam.txt
 ```
 
 常用参数示例：
 
 ```bash
 python train.py \
-  --data_path data/sms_spam.csv \
+  --data_path data/mudou_spam.txt \
   --epochs 10 \
   --batch_size 64 \
   --embed_dim 128 \
@@ -122,11 +155,10 @@ python predict.py \
 
 ### `preprocess.py`
 负责：
+- 读取 CSV 数据
+- 读取 `mudou_spam` 风格的 Tab 分隔 `.txt/.tsv`
 - 文本清洗
-- `jieba` 分词
-- 词表构建
-- 文本转 ID
-- padding / truncation
+- 使用已有分词结果或自动 `jieba` 分词
 
 ### `dataset.py`
 负责：
@@ -142,7 +174,7 @@ python predict.py \
 
 ### `train.py`
 负责：
-- 读取 CSV
+- 自动识别数据文件格式
 - 划分训练集 / 验证集
 - 构建 DataLoader
 - 模型训练
@@ -175,7 +207,7 @@ TextCNN 适合文本分类任务：
 
 ## 9. 快速运行示例
 
-创建一个最小数据集：
+### 9.1 创建一个最小 CSV 数据集
 
 ```bash
 mkdir -p data
@@ -188,10 +220,28 @@ text,label
 EOF
 ```
 
-然后训练：
+训练：
 
 ```bash
 python train.py --data_path data/sms_spam.csv --epochs 5
+```
+
+### 9.2 创建一个最小 `mudou_spam` 风格数据集
+
+```bash
+mkdir -p data
+cat > data/mudou_spam.txt << 'EOF'
+1	免费送彩金，点击领取	免费 送彩金 ， 点击 领取
+0	您好，明天记得来拿快递	您好 ， 明天 记得 来拿 快递
+1	限时优惠，回复1办理贷款	限时 优惠 ， 回复 1 办理 贷款
+0	晚上一起吃饭	晚上 一起 吃饭
+EOF
+```
+
+训练：
+
+```bash
+python train.py --data_path data/mudou_spam.txt --epochs 5
 ```
 
 预测：

@@ -30,7 +30,12 @@ from utils import build_vocab, classification_metrics, ensure_dir, save_json, se
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train TextCNN for Chinese SMS spam detection")
-    parser.add_argument("--data_path", type=str, required=True, help="Path to CSV dataset")
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        required=True,
+        help="Path to dataset file. Supports CSV with text/label columns, or tab-separated .txt/.tsv like mudou_spam.",
+    )
     parser.add_argument("--artifacts_dir", type=str, default=ARTIFACTS_DIR)
     parser.add_argument("--epochs", type=int, default=DEFAULT_EPOCHS)
     parser.add_argument("--batch_size", type=int, default=DEFAULT_BATCH_SIZE)
@@ -105,8 +110,8 @@ def main():
         stratify=df["label"],
     )
 
-    train_tokens = tokenize_texts(train_df["text"].tolist())
-    val_tokens = tokenize_texts(val_df["text"].tolist())
+    train_tokens = tokenize_texts(train_df["text"].tolist(), train_df["tokens"].tolist())
+    val_tokens = tokenize_texts(val_df["text"].tolist(), val_df["tokens"].tolist())
 
     vocab = build_vocab(
         train_tokens,
